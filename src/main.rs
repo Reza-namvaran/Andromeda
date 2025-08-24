@@ -1,36 +1,41 @@
-use std::io::{Read, Write};
+mod resp;
+mod commands;
+
+use resp::parse_resp;
+use commands::handle_command;
+use std::io::{BufReader, Write};
 use std::net::{TcpListener, TcpStream};
+use std::thread;
 
-fn handle_client(mut stream: TcpStream) {
-    let mut buffer = [0; 512];
-    
+fn handle_client(stream: TcpStream) {
+    let mut reader = BufReader::new(stream.try_clone().unwrap());
+    let mut writer = stream;
+
     loop {
-        match stream.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(n) => {
-                let input = String::from_utf8_lossy(&buffer[..n]);
-
-                if input.contains("PING") {
-                    stream.write_all(b"+PONG\r\n").unwrap();
+        match parse_resp(&mut reader) {
+            Ok(resp) => {
+                if let Some(reply) = handle_command(resp) {
+                    if writer.write_all(reply.as_bytes()).is_err() {
+                        break;
+                    }
                 }
             }
-
             Err(_) => break,
         }
     }
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-    
-    println!("Connected to Reddis!");
+    println!("Server listening on port 6379...");
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                std::thread::spawn(|| handle_client(stream));
+                thread::spawn(|| handle_client(stream));
             }
-            Err(e) => println!("Connection failed: {}", e),
+            Err(e) => eprintln!("Connection failed: {}", e),
         }
     }
+    Ok(())
 }
