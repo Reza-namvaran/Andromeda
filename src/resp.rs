@@ -16,7 +16,7 @@ pub fn parse_resp<R: BufRead>(reader: &mut R) -> io::Result<RespType> {
 
     match prefix {
         '+' => Ok(RespType::SimpleString(line[1..].trim_end().to_string())),
-        '-' => Ok(RespType::Error(line[1..].trim_end().to_string)),
+        '-' => Ok(RespType::Error(line[1..].trim_end().to_string())),
         ':' => {
             let num = line[1..].trim_end().parse().map_err(|_| { io::Error::new(io::ErrorKind::InvalidData, "Invalid int")})?;
             Ok(RespType::Integer(num))
@@ -33,7 +33,7 @@ pub fn parse_resp<R: BufRead>(reader: &mut R) -> io::Result<RespType> {
             Ok(RespType::BulkString(Some(s)))
         }
         '*' => {
-            let count: isize = line[..1].trim_end().parse().map_err(|_| { io::Error::new(io::ErrorKind::InvalidData, "Invalid array length")})?;
+            let count: isize = line[1..].trim_end().parse().map_err(|_| { io::Error::new(io::ErrorKind::InvalidData, "Invalid array length")})?;
             if count == -1 {
                 return Ok(RespType::Array(None));
             }
