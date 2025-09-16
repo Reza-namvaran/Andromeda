@@ -59,6 +59,19 @@ pub fn handle_command(resp: RespType, db: &Db) -> Option<String> {
                             }
                         }
 
+                        "DEL" => {
+                            if items.len() < 2 {
+                                return Some("-ERR wrong number of arguments for 'del'\r\n".to_string());
+                            }
+                            if let RespType::BulkString(Some(key)) = &items[1] {
+                                let mut db = db.lock().unwrap();
+                                let removed = db.remove(key).is_some();
+                                Some(format!(":{}\r\n", if removed { 1 } else { 0 }))
+                            } else {
+                                Some("-ERR invalid key\r\n".to_string())
+                            }
+                        }
+
                         _ => Some("-ERR unknown command\r\n".to_string()),
                     }
                 }
